@@ -25,14 +25,24 @@ import org.apache.hadoop.io.BytesWritable;
 public class CellUdf extends UDF {
 
   private static final Log LOG = LogFactory.getLog(CellUdf.class);
-  public static final int MIN_LAT = -90;
-  public static final int MAX_LAT = 90;
-  public static final int MIN_LON = -180;
-  public static final int MAX_LON = 180;
+  private static final int MIN_LAT = -90;
+  private static final int MAX_LAT = 90;
+  private static final int MIN_LON = -180;
+  private static final int MAX_LON = 180;
 
   private final Map<Integer, Envelope> cellEnvelopes = Maps.newHashMap();
   private final OperatorIntersects operator =
     (OperatorIntersects) OperatorFactoryLocal.getInstance().getOperator(Operator.Type.Intersects);
+
+  public static void main(String... args) throws HiveException {
+    //OGCGeometry ogcGeometry = OGCGeometry.fromText("POLYGON ((0.2 0.2, 0.8 0.2, 0.8 0.8, 0.2 0.8, 0.2 0.2))");
+    //OGCGeometry ogcGeometry = OGCGeometry.fromText("POLYGON ((-10 -10, 10 -10, 10 10, -10 10, -10 -10))");
+    //OGCGeometry ogcGeometry = OGCGeometry.fromText("POLYGON ((-180 -90, 180 -90, 180 90, -180 90))");
+    OGCGeometry ogcGeometry = OGCGeometry.fromText("POLYGON ((170 0, -170 0, -170 10, 170 10, 170 0))");
+    BytesWritable writable = GeometryUtils.geometryToEsriShapeBytesWritable(ogcGeometry);
+    CellUdf udf = new CellUdf();
+    udf.evaluate(writable);
+  }
 
   public CellUdf() {
     SpatialReference spatialReference = SpatialReference.create(4326);
@@ -87,6 +97,74 @@ public class CellUdf extends UDF {
     return Lists.newArrayList(cellsEnclosedBy);
   }
 
+  private int toCellId(double latitude, double longitude) throws HiveException {
+    if (latitude < MIN_LAT || latitude > MAX_LAT || longitude < MIN_LON || longitude > MAX_LON) {
+      throw new HiveException("Invalid coordinates");
+    } else {
+      int la = getLatitudeId(latitude);
+      int lo = getLongitudeId(longitude);
+      return Math.min(Math.max(la + lo, 0), 2 * MAX_LAT * 2 * MAX_LON - 1);
+    }
+  }
+
+  private int getLatitudeId(double latitude) {
+    return new Double(Math.floor(latitude + MAX_LAT)).intValue() * 2 * MAX_LON;
+  }
+
+  private int getLongitudeId(double longitude) {
+    return new Double(Math.floor(longitude + MAX_LON)).intValue();
+  }
+
+  private Set<Integer> getCellsEnclosedBy(double minLat, double maxLat, double minLon, double maxLon)
+    throws HiveException {
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Establishing cells enclosed by (lon/lat), min: "
+                + minLon
+                + "/"
+                + minLat
+                + ", max: "
+                + maxLon
+                + "/"
+                + maxLat);
+    }
+
+    // Create a 1 cell buffer around the area in question
+    minLat = Math.max(MIN_LAT, minLat - 1);
+    minLon = Math.max(MIN_LON, minLon - 1);
+
+    maxLat = Math.min(MAX_LAT, maxLat + 1);
+    maxLon = Math.min(MAX_LON, maxLon + 1);
+
+    int lower = toCellId(minLat, minLon);
+    int upper = toCellId(maxLat, maxLon);
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Unprocessed cells: " + lower + " -> " + upper);
+    }
+
+    // Clip to the cell limit
+    lower = Math.max(0, lower);
+    upper = Math.min(2 * MAX_LON * 2 * MAX_LAT - 1, upper);
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Getting cells contained in " + lower + " to " + upper);
+    }
+
+    int omitLeft = lower % (2 * MAX_LON);
+    int omitRight = upper % (2 * MAX_LON);
+    if (omitRight == 0) {
+      omitRight = 2 * MAX_LON;
+    }
+    Set<Integer> cells = new HashSet<Integer>();
+    for (int i = lower; i <= upper; i++) {
+      if (i % (2 * MAX_LON) >= omitLeft && i % (2 * MAX_LON) <= omitRight) {
+        cells.add(i);
+      }
+    }
+    return cells;
+  }
+
   private Set<Integer> getCellIntersects(OGCGeometry ogcGeometry, Iterable<Integer> cellsEnclosedBy) {
     operator.accelerateGeometry(ogcGeometry.getEsriGeometry(),
                                 ogcGeometry.getEsriSpatialReference(),
@@ -106,105 +184,6 @@ public class CellUdf extends UDF {
                             cellEnvelopes.get(cell),
                             ogcGeometry.getEsriSpatialReference(),
                             null);
-  }
-
-  private static int toCellId(double latitude, double longitude) throws HiveException {
-
-    if (latitude < MIN_LAT || latitude > MAX_LAT || longitude < MIN_LON || longitude > MAX_LON) {
-      throw new HiveException("Invalid coordinates");
-    } else {
-      int la = getLatitudeId(latitude);
-      int lo = getLongitudeId(longitude);
-      return Math.min(Math.max(la + lo, 0), 2 * MAX_LAT * 2 * MAX_LON - 1);
-    }
-  }
-
-  private static int getLatitudeId(double latitude) {
-    return new Double(Math.floor(latitude + MAX_LAT)).intValue() * 2 * MAX_LON;
-  }
-
-  private static int getLongitudeId(double longitude) {
-    return new Double(Math.floor(longitude + MAX_LON)).intValue();
-  }
-
-  private static Set<Integer> getCellsEnclosedBy(double minLat, double maxLat, double minLon, double maxLon)
-    throws HiveException {
-    minLat = Math.max(MIN_LAT, minLat);
-    maxLat = Math.min(MAX_LAT, maxLat);
-    minLon = Math.max(MIN_LON, minLon);
-    maxLon = Math.min(MAX_LON, maxLon);
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Establishing cells enclosed by: " + minLon + ":" + minLat + "   " + maxLon + ":" + maxLat);
-    }
-
-    int lower = toCellId(minLat, minLon);
-    int upper = toCellId(maxLat, maxLon);
-
-    // TODO: Simplify by just creating a 1 cell buffer
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Unprocessed cells: " + lower + " -> " + upper);
-    }
-
-    if (maxLon % 1 == 0 && maxLon < MAX_LON) {
-      LOG.debug("Max Longitude lies on a boundary");
-      upper += 1;
-    }
-    if (maxLat % 1 == 0 && maxLat < MAX_LAT) {
-      LOG.debug("Max Latitude lies on a boundary");
-      upper += 2 * MAX_LON;
-    }
-
-    if (minLon % 1 == 0 && minLon > MIN_LON) {
-      LOG.debug("Min Longitude lies on a boundary");
-      lower -= 1;
-    }
-    if (minLat % 1 == 0 && minLat > MIN_LAT) {
-      LOG.debug("Min Latitude lies on a boundary");
-      lower -= 2 * MAX_LON;
-    }
-
-    // Clip to the cell limit
-    lower = Math.max(0, lower);
-    upper = Math.min(2 * MAX_LON * 2 * MAX_LAT - 1, upper);
-
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Getting cells contained in " + lower + " to " + upper);
-    }
-
-    /*
-    TODO: This does not work properly!
-    int omitLeft = lower % 2 * MAX_LON;
-    int omitRight = upper % 2 * MAX_LON;
-    if (omitRight == 0) {
-      omitRight = 2 * MAX_LON;
-    }
-    Set<Integer> cells = new HashSet<Integer>();
-    for (int i = lower; i <= upper; i++) {
-      if (i % 2 * MAX_LON >= omitLeft && i % 2 * MAX_LON <= omitRight) {
-        cells.add(i);
-      }
-    }
-    */
-
-    Set<Integer> cells = new HashSet<Integer>();
-    for (int i = lower; i <= upper; i++) {
-      cells.add(i);
-
-    }
-
-    return cells;
-  }
-
-  public static void main(String... args) throws HiveException {
-    //OGCGeometry ogcGeometry = OGCGeometry.fromText("POLYGON ((0.2 0.2, 0.8 0.2, 0.8 0.8, 0.2 0.8, 0.2 0.2))");
-    OGCGeometry ogcGeometry = OGCGeometry.fromText("POLYGON ((-10 -10, 10 -10, 10 10, -10 10, -10 -10))");
-
-    //OGCGeometry ogcGeometry = OGCGeometry.fromText("POLYGON ((-180 -90, 180 -90, 180 90, -180 90))");
-    BytesWritable writable = GeometryUtils.geometryToEsriShapeBytesWritable(ogcGeometry);
-    CellUdf udf = new CellUdf();
-    udf.evaluate(writable);
   }
 
 }
