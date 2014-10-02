@@ -5,32 +5,19 @@ import java.util.List;
 
 import com.esri.core.geometry.Envelope;
 import com.esri.core.geometry.Geometry;
-import com.esri.core.geometry.Operator;
-import com.esri.core.geometry.OperatorFactoryLocal;
-import com.esri.core.geometry.OperatorIntersects;
-import com.esri.core.geometry.SpatialReference;
 import com.esri.core.geometry.ogc.OGCGeometry;
 import com.esri.hadoop.hive.GeometryUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.hive.ql.exec.UDF;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.io.BytesWritable;
 
-public class CellUdf extends UDF {
+/**
+ * A UDF that returns an array of cells for a given Geometry and cell size.
+ */
+public class CellUdf extends BaseCellUdf {
 
   private static final Log LOG = LogFactory.getLog(CellUdf.class);
-  private static final int MIN_LAT = -90;
-  private static final int MAX_LAT = 90;
-  private static final int MIN_LON = -180;
-  private static final int MAX_LON = 180;
-
-  private static final SpatialReference SPATIAL_REFERENCE = SpatialReference.create(4326);
-  private final OperatorIntersects operator =
-    (OperatorIntersects) OperatorFactoryLocal.getInstance().getOperator(Operator.Type.Intersects);
-  private Double cellSize;
-  private long maxLonCell;
-  private long maxLatCell;
 
   public static void main(String... args) throws HiveException {
     OGCGeometry ogcGeometry =
@@ -53,11 +40,7 @@ public class CellUdf extends UDF {
       return null;
     }
 
-    if (this.cellSize == null) {
-      this.cellSize = cellSize;
-      maxLonCell = (int) Math.floor((2 * MAX_LON) / cellSize);
-      maxLatCell = (int) Math.floor((2 * MAX_LAT) / cellSize);
-    }
+    setCellSize(cellSize);
 
     // 1. Create bounding box
     OGCGeometry ogcGeometry = GeometryUtils.geometryFromEsriShape(b);
@@ -94,42 +77,6 @@ public class CellUdf extends UDF {
     return cellsEnclosedBy;
   }
 
-  private Envelope initCellEnvelope(long cell) {
-    long row = cell / maxLonCell;
-    long col = cell % maxLonCell;
-    Envelope envelope = new Envelope(MIN_LON + col * cellSize,
-                                     MIN_LAT + row * cellSize,
-                                     MIN_LON + col * cellSize + cellSize,
-                                     MIN_LAT + row * cellSize + cellSize);
-    operator.accelerateGeometry(envelope, SPATIAL_REFERENCE, Geometry.GeometryAccelerationDegree.enumHot);
-    return envelope;
-  }
-
-  private long toCellId(double latitude, double longitude, double cellSize) throws HiveException {
-    if (latitude < MIN_LAT || latitude > MAX_LAT || longitude < MIN_LON || longitude > MAX_LON) {
-      throw new HiveException("Invalid coordinates");
-    } else {
-      long la = getLatitudeId(latitude, cellSize);
-      long lo = getLongitudeId(longitude, cellSize);
-      return Math.min(Math.max(la + lo, 0), maxLatCell * maxLonCell - 1);
-    }
-  }
-
-  /*
-     floor((latitude + MAX_LAT) / cellSize) * ((2 * MAX_LON) / cellSize)
-   */
-  private long getLatitudeId(double latitude, double cellSize) {
-    return new Double(Math.floor((latitude + MAX_LAT) / cellSize) * maxLonCell).longValue();
-  }
-
-  /*
-     cell: floor((longitude + MAX_LON) / cell size)
-     max:  2 * MAX_LON / cell size)
-   */
-  private long getLongitudeId(double longitude, double cellSize) {
-    return new Double(Math.floor((longitude + MAX_LON) / cellSize)).longValue();
-  }
-
   private List<Long> getCellsEnclosedBy(
     double minLat, double maxLat, double minLon, double maxLon, double cellSize, OGCGeometry ogcGeometry
   ) throws HiveException {
@@ -155,28 +102,26 @@ public class CellUdf extends UDF {
     long lower = toCellId(minLat, minLon, cellSize);
     long upper = toCellId(maxLat, maxLon, cellSize);
 
-    LOG.info("Unprocessed cells: " + lower + " -> " + upper);
-
     // Clip to the cell limit
     lower = Math.max(0, lower);
-    upper = Math.min(maxLonCell * maxLatCell - 1, upper);
+    upper = Math.min(getMaxLonCell() * getMaxLatCell() - 1, upper);
 
     LOG.info("Checking cells between " + lower + " and " + upper);
 
-    long omitLeft = lower % maxLonCell;
-    long omitRight = upper % maxLonCell;
+    long omitLeft = lower % getMaxLonCell();
+    long omitRight = upper % getMaxLonCell();
     if (omitRight == 0) {
-      omitRight = maxLonCell;
+      omitRight = getMaxLonCell();
     }
 
-    operator.accelerateGeometry(ogcGeometry.getEsriGeometry(),
-                                ogcGeometry.getEsriSpatialReference(),
-                                Geometry.GeometryAccelerationDegree.enumHot);
+    getIntersectsOperator().accelerateGeometry(ogcGeometry.getEsriGeometry(),
+                                               ogcGeometry.getEsriSpatialReference(),
+                                               Geometry.GeometryAccelerationDegree.enumHot);
 
     List<Long> cellsEnclosedBy = new ArrayList<Long>(10000);
 
     for (long i = lower; i <= upper; i++) {
-      if (i % maxLonCell >= omitLeft && i % maxLonCell <= omitRight) {
+      if (i % getMaxLonCell() >= omitLeft && i % getMaxLonCell() <= omitRight) {
         if (intersects(i, ogcGeometry)) {
           cellsEnclosedBy.add(i);
         }
@@ -188,10 +133,10 @@ public class CellUdf extends UDF {
   }
 
   private boolean intersects(long cell, OGCGeometry ogcGeometry) {
-    return operator.execute(ogcGeometry.getEsriGeometry(),
-                            initCellEnvelope(cell),
-                            ogcGeometry.getEsriSpatialReference(),
-                            null);
+    return getIntersectsOperator().execute(ogcGeometry.getEsriGeometry(),
+                                           getCellEnvelope(cell),
+                                           ogcGeometry.getEsriSpatialReference(),
+                                           null);
   }
 
 }
