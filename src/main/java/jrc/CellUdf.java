@@ -11,9 +11,6 @@ import com.esri.core.geometry.OperatorIntersects;
 import com.esri.core.geometry.SpatialReference;
 import com.esri.core.geometry.ogc.OGCGeometry;
 import com.esri.hadoop.hive.GeometryUtils;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.ql.exec.UDF;
@@ -31,13 +28,6 @@ public class CellUdf extends UDF {
   private static final SpatialReference SPATIAL_REFERENCE = SpatialReference.create(4326);
   private final OperatorIntersects operator =
     (OperatorIntersects) OperatorFactoryLocal.getInstance().getOperator(Operator.Type.Intersects);
-  private final LoadingCache<Long, Envelope> cellEnvelopes =
-    CacheBuilder.newBuilder().maximumSize(100000).build(new CacheLoader<Long, Envelope>() {
-      @Override
-      public Envelope load(Long cell) {
-        return initCellEnvelope(cell);
-      }
-    });
   private Double cellSize;
   private long maxLonCell;
   private long maxLatCell;
@@ -51,7 +41,7 @@ public class CellUdf extends UDF {
     //OGCGeometry.fromText("POLYGON ((170 0, -170 0, -170 10, 170 10, 170 0))");
     BytesWritable writable = GeometryUtils.geometryToEsriShapeBytesWritable(ogcGeometry);
     CellUdf udf = new CellUdf();
-    List<Long> evaluate = udf.evaluate(0.01, writable);
+    List<Long> evaluate = udf.evaluate(0.05, writable);
     for (Long integer : evaluate) {
       //System.out.println(integer);
     }
@@ -156,7 +146,6 @@ public class CellUdf extends UDF {
     }
 
     // Create a 1 cell buffer around the area in question
-
     minLat = Math.max(MIN_LAT, minLat - cellSize);
     minLon = Math.max(MIN_LON, minLon - cellSize);
 
