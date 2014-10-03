@@ -1,6 +1,7 @@
 package jrc;
 
 import com.esri.core.geometry.Envelope;
+import com.esri.core.geometry.Envelope2D;
 import com.esri.core.geometry.Geometry;
 import com.esri.core.geometry.Operator;
 import com.esri.core.geometry.OperatorFactoryLocal;
@@ -22,6 +23,7 @@ public abstract class BaseCellUdtf extends GenericUDTF {
   private Double cellSize;
   private long maxLonCell;
   private long maxLatCell;
+  private final Envelope envelope = new Envelope();
 
   public Double getCellSize() {
     return cellSize;
@@ -50,11 +52,11 @@ public abstract class BaseCellUdtf extends GenericUDTF {
   protected Envelope getCellEnvelope(long cell) {
     long row = cell / maxLonCell;
     long col = cell % maxLonCell;
-    Envelope envelope = new Envelope(MIN_LON + col * cellSize,
-                                     MIN_LAT + row * cellSize,
-                                     MIN_LON + col * cellSize + cellSize,
-                                     MIN_LAT + row * cellSize + cellSize);
-    intersectsOperator.accelerateGeometry(envelope, SPATIAL_REFERENCE, Geometry.GeometryAccelerationDegree.enumHot);
+    envelope.setCoords(MIN_LON + col * cellSize,
+                       MIN_LAT + row * cellSize,
+                       MIN_LON + col * cellSize + cellSize,
+                       MIN_LAT + row * cellSize + cellSize);
+    //intersectsOperator.accelerateGeometry(envelope, SPATIAL_REFERENCE, Geometry.GeometryAccelerationDegree.enumHot);
     return envelope;
   }
 

@@ -6,6 +6,7 @@ import java.util.List;
 
 import com.esri.core.geometry.Envelope;
 import com.esri.core.geometry.Geometry;
+import com.esri.core.geometry.GeometryEngine;
 import com.esri.core.geometry.Operator;
 import com.esri.core.geometry.OperatorContains;
 import com.esri.core.geometry.OperatorFactoryLocal;
@@ -29,6 +30,7 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 import org.apache.hadoop.io.BooleanWritable;
 import org.apache.hadoop.io.BytesWritable;
 import org.apache.hadoop.io.LongWritable;
+import org.json.JSONException;
 
 public class CellUdtf extends BaseCellUdtf {
 
@@ -46,14 +48,16 @@ public class CellUdtf extends BaseCellUdtf {
   private final LongWritable cellWritable = new LongWritable();
   private final BooleanWritable fullyCoveredWritable = new BooleanWritable();
 
-  public static void main(String... args) throws HiveException, IOException {
+  public static void main(String... args) throws HiveException, IOException, JSONException {
     OGCGeometry ogcGeometry =
       //OGCGeometry.fromText("POLYGON ((-179.8 -89.8, -179.2 -89.8, -179.2 -89.2, -179.8 -89.2, -179.8 -89.8))");
       //OGCGeometry.fromText("POLYGON ((0.2 0.2, 0.8 0.2, 0.8 0.8, 0.2 0.8, 0.2 0.2))");
       //OGCGeometry.fromText("POLYGON ((-10 -10, 10 -10, 10 10, -10 10, -10 -10))");
-    //  OGCGeometry.fromText("POLYGON ((-180 -90, 180 -90, 180 90, -180 90))");
+      //OGCGeometry.fromText("POLYGON ((-180 -90, 180 -90, 180 90, -180 90))");
     //OGCGeometry.fromText("POLYGON ((170 0, -170 0, -170 10, 170 10, 170 0))");
-    OGCGeometry.fromJson(Resources.toString(Resources.getResource("species8543.json"), Charsets.US_ASCII));
+
+
+    OGCGeometry.fromGeoJson(Resources.toString(Resources.getResource("single_geometry_json.json"), Charsets.US_ASCII));
     BytesWritable writable = GeometryUtils.geometryToEsriShapeBytesWritable(ogcGeometry);
     CellUdtf udf = new CellUdtf();
 
@@ -189,11 +193,11 @@ public class CellUdtf extends BaseCellUdtf {
           if (contains(cell, ogcGeometry)) {
             cellWritable.set(i);
             fullyCoveredWritable.set(true);
-            forward(result);
+//            forward(result);
           } else {
             cellWritable.set(i);
             fullyCoveredWritable.set(false);
-            forward(result);
+//            forward(result);
           }
         }
       }

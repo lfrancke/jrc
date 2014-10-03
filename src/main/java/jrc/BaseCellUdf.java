@@ -21,6 +21,8 @@ public class BaseCellUdf extends UDF {
   private long maxLonCell;
   private long maxLatCell;
   private Double cellSize;
+  private final Envelope envelope = new Envelope();
+
 
   public long getMaxLonCell() {
     return maxLonCell;
@@ -37,10 +39,10 @@ public class BaseCellUdf extends UDF {
   protected Envelope getCellEnvelope(long cell) {
     long row = cell / maxLonCell;
     long col = cell % maxLonCell;
-    Envelope envelope = new Envelope(MIN_LON + col * cellSize,
-                                     MIN_LAT + row * cellSize,
-                                     MIN_LON + col * cellSize + cellSize,
-                                     MIN_LAT + row * cellSize + cellSize);
+    envelope.setCoords(MIN_LON + col * cellSize,
+                       MIN_LAT + row * cellSize,
+                       MIN_LON + col * cellSize + cellSize,
+                       MIN_LAT + row * cellSize + cellSize);
     intersectsOperator.accelerateGeometry(envelope, SPATIAL_REFERENCE, Geometry.GeometryAccelerationDegree.enumHot);
     return envelope;
   }
