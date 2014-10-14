@@ -25,7 +25,6 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectIn
 
 public class CellIntersectsUdtf extends BaseCellUdtf {
 
-  private final Object[] result = new Object[1];
   private final OperatorIntersection intersectionOperator =
     (OperatorIntersection) OperatorFactoryLocal.getInstance().getOperator(Operator.Type.Intersection);
   private DoubleObjectInspector doi;
@@ -69,8 +68,6 @@ public class CellIntersectsUdtf extends BaseCellUdtf {
 
     fieldNames.add("intersect");
     fieldOIs.add(PrimitiveObjectInspectorFactory.writableBinaryObjectInspector);
-    result[0] = PrimitiveObjectInspectorFactory.writableBinaryObjectInspector;
-
     return ObjectInspectorFactory.getStandardStructObjectInspector(fieldNames, fieldOIs);
   }
 

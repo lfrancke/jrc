@@ -92,6 +92,11 @@ public class CellUdf extends BaseCellUdf {
                 + maxLat);
     }
 
+    // TODO: from geotrellis
+    // If the point is inside the area of the cell, it is included in the cell.
+    // If the point lies on the north or west border of the cell, it is included in the cell.
+    // If the point lies on the south or east border of the cell, it is not included in the cell, it is included in the next southern or eastern cell, respectively.
+
     // Create a 1 cell buffer around the area in question
     minLat = Math.max(MIN_LAT, minLat - cellSize);
     minLon = Math.max(MIN_LON, minLon - cellSize);
