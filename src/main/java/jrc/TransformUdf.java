@@ -6,6 +6,7 @@ import com.vividsolutions.jts.io.WKBReader;
 import com.vividsolutions.jts.io.WKBWriter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hive.ql.exec.UDF;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.io.BytesWritable;
 import org.geotools.geometry.jts.GeometryCoordinateSequenceTransformer;
@@ -15,7 +16,7 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
 
-public class TransformUdf {
+public class TransformUdf extends UDF {
 
   private static final Log LOG = LogFactory.getLog(CellUdf.class);
 
