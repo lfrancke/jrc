@@ -15,6 +15,7 @@ import org.apache.hadoop.io.BytesWritable;
 /**
  * A UDF that returns an array of cells for a given Geometry and cell size.
  */
+@Deprecated
 public class CellUdf extends BaseCellUdf {
 
   private static final Log LOG = LogFactory.getLog(CellUdf.class);
