@@ -193,11 +193,11 @@ public class CellUdtf extends BaseCellUdtf {
           if (contains(cell, ogcGeometry)) {
             cellWritable.set(i);
             fullyCoveredWritable.set(true);
-//            forward(result);
+            forward(result);
           } else {
             cellWritable.set(i);
             fullyCoveredWritable.set(false);
-//            forward(result);
+            forward(result);
           }
         }
       }
