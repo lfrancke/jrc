@@ -13,7 +13,7 @@ import org.apache.hadoop.io.BytesWritable;
 
 /**
  * Returns the intersection geometry between a cell and a given geometry.
- * Works on WKB.
+ * Expects WKB, returns WKB.
  */
 public class CellIntersectsUdf extends UDF {
 
