@@ -44,5 +44,4 @@ public class CellIntersectsUdf extends UDF {
     return result;
   }
 
-
 }

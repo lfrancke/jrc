@@ -12,13 +12,14 @@ import com.esri.core.geometry.ogc.OGCGeometry;
 import jrc.CellCalculator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hive.ql.exec.UDF;
 import org.apache.hadoop.io.BytesWritable;
 
 /**
  * Returns the intersection geometry between a cell and a given geometry.
  * Works on WKB.
  */
-public class CellIntersectsUdf extends BaseCellUdf {
+public class CellIntersectsUdf extends UDF {
 
   private static final Log LOG = LogFactory.getLog(CellIntersectsUdf.class);
 
@@ -63,7 +64,7 @@ public class CellIntersectsUdf extends BaseCellUdf {
 
     OGCGeometry esriGeometry = OGCGeometry.createFromEsriGeometry(geometry, SPATIAL_REFERENCE);
     ByteBuffer buffer = esriGeometry.asBinary();
-    result.set(buffer.array(), buffer.arrayOffset(), buffer.position());
+    result.set(buffer.array(), 0, buffer.limit()); // Note: ESRI does always use absolute puts so the position isn't advanced!
     return result;
   }
 
