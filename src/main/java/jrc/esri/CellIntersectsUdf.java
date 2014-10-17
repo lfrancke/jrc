@@ -8,14 +8,13 @@ import com.esri.core.geometry.Operator;
 import com.esri.core.geometry.OperatorFactoryLocal;
 import com.esri.core.geometry.OperatorIntersection;
 import com.esri.core.geometry.ogc.OGCGeometry;
-import com.esri.hadoop.hive.GeometryUtils;
-import jrc.BaseCellUdf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.BytesWritable;
 
 /**
  * Returns the intersection geometry between a cell and a given geometry.
+ * Works on WKB.
  */
 public class CellIntersectsUdf extends BaseCellUdf {
 

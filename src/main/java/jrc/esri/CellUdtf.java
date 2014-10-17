@@ -14,7 +14,6 @@ import com.esri.core.geometry.ogc.OGCGeometry;
 import com.esri.hadoop.hive.GeometryUtils;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
-import jrc.BaseCellUdtf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;

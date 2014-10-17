@@ -1,4 +1,4 @@
-package jrc;
+package jrc.esri;
 
 import java.util.ArrayList;
 import java.util.List;

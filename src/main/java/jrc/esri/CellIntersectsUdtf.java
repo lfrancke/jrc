@@ -10,7 +10,6 @@ import com.esri.core.geometry.OperatorFactoryLocal;
 import com.esri.core.geometry.OperatorIntersection;
 import com.esri.core.geometry.ogc.OGCGeometry;
 import com.esri.hadoop.hive.GeometryUtils;
-import jrc.BaseCellUdtf;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentLengthException;
 import org.apache.hadoop.hive.ql.metadata.HiveException;

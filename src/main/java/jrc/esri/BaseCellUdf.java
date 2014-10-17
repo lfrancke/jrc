@@ -1,4 +1,4 @@
-package jrc;
+package jrc.esri;
 
 import com.esri.core.geometry.Envelope;
 import com.esri.core.geometry.Geometry;
