@@ -1,4 +1,4 @@
-package jrc;
+package jrc.geotools;
 
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
@@ -14,6 +14,9 @@ import org.opengis.referencing.crs.CoordinateReferenceSystem;
 import org.opengis.referencing.operation.MathTransform;
 import org.opengis.referencing.operation.TransformException;
 
+/**
+ * UDF to calculate the Area of a given cell.
+ */
 public class CellAreaUdf extends UDF {
 
   private static final int MIN_LON = -180;
@@ -21,7 +24,7 @@ public class CellAreaUdf extends UDF {
   private static final int MIN_LAT = -90;
   private final GeometryCoordinateSequenceTransformer transformer = new GeometryCoordinateSequenceTransformer();
   private long maxLonCell;
-  private boolean needsInitialization = true;
+  private boolean firstRun = true;
 
   public static void main(String... args) throws FactoryException, TransformException {
     CellAreaUdf cellAreaUdf = new CellAreaUdf();
@@ -33,13 +36,13 @@ public class CellAreaUdf extends UDF {
   public double evaluate(long cellId, double cellSize, String sourceCrsString, String targetCrsString)
     throws FactoryException, TransformException {
 
-    if (needsInitialization) {
+    if (firstRun) {
       maxLonCell = (int) Math.floor((2 * MAX_LON) / cellSize);
       CoordinateReferenceSystem sourceCrs = CRS.decode(sourceCrsString);
       CoordinateReferenceSystem targetCrs = CRS.decode(targetCrsString);
       MathTransform mathTransform = CRS.findMathTransform(sourceCrs, targetCrs);
       transformer.setMathTransform(mathTransform);
-      needsInitialization = false;
+      firstRun = false;
     }
 
     int row = (int) (cellId / maxLonCell);

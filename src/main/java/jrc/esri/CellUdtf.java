@@ -1,4 +1,4 @@
-package jrc;
+package jrc.esri;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -6,7 +6,6 @@ import java.util.List;
 
 import com.esri.core.geometry.Envelope;
 import com.esri.core.geometry.Geometry;
-import com.esri.core.geometry.GeometryEngine;
 import com.esri.core.geometry.Operator;
 import com.esri.core.geometry.OperatorContains;
 import com.esri.core.geometry.OperatorFactoryLocal;
@@ -15,6 +14,7 @@ import com.esri.core.geometry.ogc.OGCGeometry;
 import com.esri.hadoop.hive.GeometryUtils;
 import com.google.common.base.Charsets;
 import com.google.common.io.Resources;
+import jrc.BaseCellUdtf;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.ql.exec.UDFArgumentException;
