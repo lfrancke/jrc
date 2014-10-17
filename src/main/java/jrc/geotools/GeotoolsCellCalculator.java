@@ -29,7 +29,6 @@ public class GeotoolsCellCalculator extends CellCalculator<Polygon> {
           new Coordinate(xMin, yMin)
         }
       ), null);
-
   }
 
 }

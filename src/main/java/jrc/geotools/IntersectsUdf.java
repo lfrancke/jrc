@@ -6,7 +6,11 @@ import com.vividsolutions.jts.io.WKBReader;
 import org.apache.hadoop.hive.ql.exec.UDF;
 import org.apache.hadoop.io.BytesWritable;
 
-public class GeotoolsIntersectsUdf extends UDF {
+/**
+ * Calculates whether two geometries intersect.
+ * Expects WKB.
+ */
+public class IntersectsUdf extends UDF {
 
   private final WKBReader reader = new WKBReader();
 

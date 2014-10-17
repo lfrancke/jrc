@@ -7,7 +7,11 @@ import org.apache.hadoop.hive.ql.exec.UDF;
 import org.apache.hadoop.hive.serde2.io.DoubleWritable;
 import org.apache.hadoop.io.BytesWritable;
 
-public class GeotoolsAreaUdf extends UDF {
+/**
+ * Calculates the area of a geometry.
+ * Expects WKB.
+ */
+public class AreaUdf extends UDF {
 
   private final DoubleWritable result = new DoubleWritable();
   private final WKBReader reader = new WKBReader();
