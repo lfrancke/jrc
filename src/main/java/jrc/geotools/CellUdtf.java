@@ -1,17 +1,13 @@
-package jrc.esri;
+package jrc.geotools;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.esri.core.geometry.Envelope;
-import com.esri.core.geometry.Geometry;
-import com.esri.core.geometry.Operator;
-import com.esri.core.geometry.OperatorContains;
-import com.esri.core.geometry.OperatorFactoryLocal;
-import com.esri.core.geometry.OperatorIntersects;
-import com.esri.core.geometry.SpatialReference;
-import com.esri.core.geometry.ogc.OGCGeometry;
+import com.vividsolutions.jts.geom.Envelope;
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.io.ParseException;
+import com.vividsolutions.jts.io.WKBReader;
 import jrc.CellCalculator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -34,22 +30,14 @@ import static jrc.CellCalculator.MAX_LON;
 import static jrc.CellCalculator.MIN_LAT;
 import static jrc.CellCalculator.MIN_LON;
 
-/**
- * Calculates all the cell intersecting with a geometry at a certain cell size.
- * Expects WKB.
- */
 public class CellUdtf extends GenericUDTF {
 
-  private static final SpatialReference SPATIAL_REFERENCE = SpatialReference.create(4326);
   private static final Log LOG = LogFactory.getLog(CellUdtf.class);
-  private final OperatorIntersects intersectsOperator =
-    (OperatorIntersects) OperatorFactoryLocal.getInstance().getOperator(Operator.Type.Intersects);
-  private final OperatorContains containsOperator =
-    (OperatorContains) OperatorFactoryLocal.getInstance().getOperator(Operator.Type.Contains);
+  private final WKBReader reader = new WKBReader();
   private final Object[] result = new Object[2];
   private final LongWritable cellWritable = new LongWritable();
   private final BooleanWritable fullyCoveredWritable = new BooleanWritable();
-  private final CellCalculator<Envelope> cellCalculator = new EsriCellCalculator();
+  private final CellCalculator<Polygon> cellCalculator = new GeotoolsCellCalculator();
   private DoubleObjectInspector doi;
   private BinaryObjectInspector boi;
   private boolean firstRun = true;
@@ -93,46 +81,33 @@ public class CellUdtf extends GenericUDTF {
       firstRun = false;
     }
 
-    // 1. Create bounding box
-    OGCGeometry ogcGeometry =
-      OGCGeometry.fromBinary(ByteBuffer.wrap(boi.getPrimitiveWritableObject(args[1]).getBytes()));
-    if (ogcGeometry == null) {
+    Geometry geom;
+    try {
+      geom = reader.read(boi.getPrimitiveWritableObject(args[1]).getBytes());
+    } catch (ParseException e) {
+      throw new HiveException(e);
+    }
+    if (geom == null) {
       LOG.warn("Geometry is null");
       return;
     }
 
-    if (ogcGeometry.isEmpty()) {
+    if (geom.isEmpty()) {
       LOG.warn("Geometry is empty");
       return;
     }
 
-    if (!"Polygon".equals(ogcGeometry.geometryType()) && !"MultiPolygon".equals(ogcGeometry.geometryType())) {
-      LOG.warn("Geometry is not a polygon: " + ogcGeometry.geometryType());
-      return;
-    }
+    Envelope envBound = geom.getEnvelopeInternal();
 
-    Envelope envBound = new Envelope();
-    ogcGeometry.getEsriGeometry().queryEnvelope(envBound);
-    if (envBound.isEmpty()) {
-      LOG.warn("Envelope is empty");
-      return;
-    }
-
-    getCellsEnclosedBy(envBound.getYMin(),
-                       envBound.getYMax(),
-                       envBound.getXMin(),
-                       envBound.getXMax(),
-                       ogcGeometry.getEsriGeometry());
+    getCellsEnclosedBy(envBound.getMinY(), envBound.getMaxY(), envBound.getMinX(), envBound.getMaxX(), geom);
   }
 
   @Override
   public void close() throws HiveException {
-
   }
 
-  private void getCellsEnclosedBy(
-    double minLat, double maxLat, double minLon, double maxLon, Geometry ogcGeometry
-  ) throws HiveException {
+  private void getCellsEnclosedBy(double minLat, double maxLat, double minLon, double maxLon, Geometry geometry)
+    throws HiveException {
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("Establishing cells enclosed by (lon/lat), min: "
@@ -167,13 +142,11 @@ public class CellUdtf extends GenericUDTF {
       omitRight = cellCalculator.getMaxLonCell();
     }
 
-    intersectsOperator.accelerateGeometry(ogcGeometry, SPATIAL_REFERENCE, Geometry.GeometryAccelerationDegree.enumHot);
-
     for (long i = lower; i <= upper; i++) {
       if (i % cellCalculator.getMaxLonCell() >= omitLeft && i % cellCalculator.getMaxLonCell() <= omitRight) {
-        Envelope cell = cellCalculator.getCellEnvelope(i);
-        if (intersects(cell, ogcGeometry)) {
-          if (contains(cell, ogcGeometry)) {
+        Polygon cell = cellCalculator.getCellEnvelope(i);
+        if (cell.intersects(geometry)) {
+          if (cell.contains(geometry)) {
             cellWritable.set(i);
             fullyCoveredWritable.set(true);
             forward(result);
@@ -186,14 +159,6 @@ public class CellUdtf extends GenericUDTF {
       }
 
     }
-  }
-
-  private boolean intersects(Envelope cell, Geometry ogcGeometry) {
-    return intersectsOperator.execute(ogcGeometry, cell, SPATIAL_REFERENCE, null);
-  }
-
-  private boolean contains(Envelope cell, Geometry ogcGeometry) {
-    return containsOperator.execute(ogcGeometry, cell, SPATIAL_REFERENCE, null);
   }
 
 }

@@ -4,10 +4,10 @@ import org.apache.hadoop.hive.ql.metadata.HiveException;
 
 public abstract class CellCalculator<T> {
 
-  protected static final int MIN_LAT = -90;
-  protected static final int MAX_LAT = 90;
-  protected static final int MIN_LON = -180;
-  protected static final int MAX_LON = 180;
+  public static final int MIN_LAT = -90;
+  public static final int MAX_LAT = 90;
+  public static final int MIN_LON = -180;
+  public static final int MAX_LON = 180;
   private long maxLonCell;
   private long maxLatCell;
   private double cellSize;
@@ -22,7 +22,7 @@ public abstract class CellCalculator<T> {
 
   public abstract T getCellEnvelope(long cell);
 
-  protected double getCellSize() {
+  public double getCellSize() {
     return cellSize;
   }
 
@@ -32,7 +32,7 @@ public abstract class CellCalculator<T> {
     maxLatCell = (int) Math.floor((2 * MAX_LAT) / cellSize);
   }
 
-  protected long toCellId(double latitude, double longitude, double cellSize) throws HiveException {
+  public long toCellId(double latitude, double longitude) throws HiveException {
     if (latitude < MIN_LAT || latitude > MAX_LAT || longitude < MIN_LON || longitude > MAX_LON) {
       throw new HiveException("Invalid coordinates");
     } else {

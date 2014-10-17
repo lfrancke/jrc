@@ -18,6 +18,7 @@ import org.opengis.referencing.operation.TransformException;
 
 /**
  * Transforms a geometry from one CRS into another.
+ * Expects WKB, returns WKB.
  */
 public class TransformUdf extends UDF {
 
@@ -27,7 +28,7 @@ public class TransformUdf extends UDF {
   private final WKBWriter writer = new WKBWriter();
   private final GeometryCoordinateSequenceTransformer transformer = new GeometryCoordinateSequenceTransformer();
   private final BytesWritable transformedWritable = new BytesWritable();
-  private boolean firstRun;
+  private boolean firstRun = true;
 
   public BytesWritable evaluate(String sourceCrsString, String targetCrsString, BytesWritable b)
     throws HiveException, ParseException, FactoryException, TransformException {

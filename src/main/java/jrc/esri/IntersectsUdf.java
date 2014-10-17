@@ -9,7 +9,11 @@ import com.esri.core.geometry.ogc.OGCGeometry;
 import org.apache.hadoop.hive.ql.exec.UDF;
 import org.apache.hadoop.io.BytesWritable;
 
-public class EsriIntersectsUdf extends UDF {
+/**
+ * Calculates whether two geometries intersect.
+ * Expects WKB.
+ */
+public class IntersectsUdf extends UDF {
 
   private final OperatorIntersects intersectsOperator =
     (OperatorIntersects) OperatorFactoryLocal.getInstance().getOperator(Operator.Type.Intersects);

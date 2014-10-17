@@ -7,7 +7,9 @@ import com.esri.core.geometry.Geometry;
 import com.esri.core.geometry.Operator;
 import com.esri.core.geometry.OperatorFactoryLocal;
 import com.esri.core.geometry.OperatorIntersection;
+import com.esri.core.geometry.SpatialReference;
 import com.esri.core.geometry.ogc.OGCGeometry;
+import jrc.CellCalculator;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.io.BytesWritable;
@@ -20,10 +22,13 @@ public class CellIntersectsUdf extends BaseCellUdf {
 
   private static final Log LOG = LogFactory.getLog(CellIntersectsUdf.class);
 
+  private static final SpatialReference SPATIAL_REFERENCE = SpatialReference.create(4326);
+
   private final OperatorIntersection intersectionOperator =
     (OperatorIntersection) OperatorFactoryLocal.getInstance().getOperator(Operator.Type.Intersection);
-
   private final BytesWritable result = new BytesWritable();
+  private final CellCalculator<Envelope> cellCalculator = new EsriCellCalculator();
+  private boolean firstRun = true;
 
   public BytesWritable evaluate(double cellSize, long cell, BytesWritable b) {
     if (b == null || b.getLength() == 0) {
@@ -31,7 +36,10 @@ public class CellIntersectsUdf extends BaseCellUdf {
       return null;
     }
 
-    setCellSize(cellSize);
+    if (firstRun) {
+      cellCalculator.setCellSize(cellSize);
+      firstRun = false;
+    }
 
     OGCGeometry ogcGeometry = OGCGeometry.fromBinary(ByteBuffer.wrap(b.getBytes()));
     if (ogcGeometry == null) {
@@ -49,7 +57,7 @@ public class CellIntersectsUdf extends BaseCellUdf {
       return null;
     }
 
-    Envelope cellEnvelope = getCellEnvelope(cell);
+    Envelope cellEnvelope = cellCalculator.getCellEnvelope(cell);
     Geometry geometry =
       intersectionOperator.execute(cellEnvelope, ogcGeometry.getEsriGeometry(), SPATIAL_REFERENCE, null);
 

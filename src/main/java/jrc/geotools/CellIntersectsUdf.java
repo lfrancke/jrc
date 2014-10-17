@@ -23,7 +23,7 @@ public class CellIntersectsUdf extends UDF {
   private final WKBWriter writer = new WKBWriter();
   private final BytesWritable result = new BytesWritable();
   private final CellCalculator<Polygon> cellCalculator = new GeotoolsCellCalculator();
-  private boolean firstRun;
+  private boolean firstRun = true;
 
   public BytesWritable evaluate(double cellSize, long cell, BytesWritable b) throws ParseException {
     if (b == null || b.getLength() == 0) {
